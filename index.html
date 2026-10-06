@@ -824,24 +824,19 @@ a.inl,.links a:hover{color:var(--brand)}
   .mdots{display:flex;justify-content:center;gap:6px;margin:6px 0 0}
   .mdots i{width:6px;height:6px;border-radius:999px;background:color-mix(in srgb,var(--fg) 22%,transparent);transition:width .25s,background .25s}
   .mdots i.on{width:20px;background:var(--brand)}
-  /* 2. tap-to-cycle card deck: problems, insights, fun facts */
-  .mdeck{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;padding:0 0 30px!important;max-width:none!important;touch-action:pan-y}
-  .mdeck>*{grid-area:1/1;margin:0!important;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;transform-origin:50% 100%;
-    background:var(--card)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
-    transition:translate .45s cubic-bezier(.2,.75,.2,1),scale .45s cubic-bezier(.2,.75,.2,1),rotate .45s,opacity .35s,box-shadow .3s}
-  .mdeck>[data-pos="0"]{opacity:1!important;box-shadow:0 22px 44px -26px rgba(60,10,30,.45)!important}
-  .mdeck>[data-pos="1"]{translate:0 15px;scale:.94;opacity:.9!important}
-  .mdeck>[data-pos="2"]{translate:0 30px;scale:.88;opacity:.55!important}
-  .mdeck>[data-pos="3"]{translate:0 30px;scale:.88;opacity:0!important;pointer-events:none}
-  .mdeck>.fly-l{translate:-118% -10px!important;rotate:-9deg;opacity:0!important}
-  .mdeck>.fly-r{translate:118% -10px!important;rotate:9deg;opacity:0!important}
-  .mdeck>[data-pos]:not([data-pos="0"]) *{visibility:hidden}
-  .mdeck>[data-pos]:not([data-pos="0"]){border-left-color:var(--line)!important}
-  .deck-ctl{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
-  .deck-ctl span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .deck-ctl em{font-style:normal;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .deck-ctl div{display:flex;gap:8px}
-  .deck-ctl button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--fg);display:grid;place-items:center;font-size:16px}
+  /* 2. paged slider: problems, insights, fun facts (one full card at a time, native smooth swipe) */
+  .mpager{display:flex!important;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;gap:12px!important;padding:2px 0 8px!important;max-width:none!important;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;align-items:stretch}
+  .mpager::-webkit-scrollbar{display:none}
+  .mpager>*{flex:0 0 100%;min-width:0;margin:0!important;scroll-snap-align:start;scroll-snap-stop:always}
+  .mpager>*,:root[data-theme="dark"] .mpager>*,:root[data-theme="dark"] .mpager>.card{background:var(--card)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .deck-ctl{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .deck-ctl em{font-style:normal;font-size:12.5px;color:var(--muted)}
+  .deck-ctl div{display:flex;align-items:center;gap:8px}
+  .deck-ctl span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:44px;text-align:center}
+  .deck-ctl button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--fg);display:grid;place-items:center;font-size:16px;transition:opacity .2s}
+  .deck-ctl button:disabled{opacity:.35}
+  .deck-ctl .bar{flex:1;height:3px;border-radius:3px;background:var(--line);margin:0 14px 0 0;overflow:hidden;max-width:120px}
+  .deck-ctl .bar i{display:block;height:100%;background:var(--brand);border-radius:3px;transition:width .3s}
   /* 3. auto-playing feature tabs: how I worked, key decisions, project summary */
   .mfeat{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;max-width:none!important}
   .mfeat>:not(.mtabs){grid-area:2/1;margin:0!important;opacity:0!important;visibility:hidden;translate:0 10px;transition:opacity .4s,translate .4s,visibility 0s .4s}
@@ -2168,32 +2163,20 @@ html.rv .rv-item.in{opacity:1;transform:none}
     var raf = 0; el.addEventListener("scroll", function(){ if (!raf) raf = requestAnimationFrame(function(){ raf = 0; up(); }); }, {passive:true});
     el._up = up; up();
   }
-  /* 2. tap / swipe card deck */
+  /* 2. paged slider */
   function deck(el){
-    if (el._m) return; el._m = 1; el.classList.add("mdeck", "mcar");
-    var kids = [].slice.call(el.children), order = kids.map(function(_, i){ return i; }), busy = false;
+    if (el._m) return; el._m = 1; el.classList.add("mpager", "mcar");
+    var n = el.children.length;
     var ctl = document.createElement("div"); ctl.className = "deck-ctl";
-    ctl.innerHTML = '<em>Tap or swipe the card</em><div><span></span></div>';
-    var cnt = ctl.querySelector("span");
-    var prevB = document.createElement("button"), nextB = document.createElement("button");
-    prevB.type = nextB.type = "button"; prevB.setAttribute("aria-label","Previous card"); nextB.setAttribute("aria-label","Next card");
-    prevB.textContent = "\u2190"; nextB.textContent = "\u2192";
-    var box = ctl.querySelector("div"); box.insertBefore(prevB, cnt); box.appendChild(nextB);
-    cnt.style.alignSelf = "center"; cnt.style.minWidth = "44px"; cnt.style.textAlign = "center";
+    ctl.innerHTML = '<span class="bar"><i></i></span><div><button type="button" aria-label="Previous card">\u2190</button><span>1 / ' + n + '</span><button type="button" aria-label="Next card">\u2192</button></div>';
     el.insertAdjacentElement("afterend", ctl);
-    function layout(){ order.forEach(function(k, p){ kids[k].dataset.pos = Math.min(p, 3); kids[k].style.zIndex = 20 - p; kids[k].setAttribute("aria-hidden", p ? "true" : "false"); }); cnt.textContent = (order[0] + 1) + " / " + kids.length; }
-    function next(dir){
-      if (busy || !mq.matches) return; busy = true;
-      if (dir > 0){ var top = kids[order[0]]; top.classList.add("fly-l");
-        setTimeout(function(){ top.style.transition = "none"; top.classList.remove("fly-l"); order.push(order.shift()); layout(); top.offsetWidth; top.style.transition = ""; busy = false; }, reduce ? 0 : 320);
-      } else { var last = kids[order[order.length - 1]]; last.style.transition = "none"; last.classList.add("fly-r"); order.unshift(order.pop()); layout(); last.offsetWidth; last.style.transition = ""; last.classList.remove("fly-r"); setTimeout(function(){ busy = false; }, 350); }
-    }
-    var sx = null;
-    el.addEventListener("pointerdown", function(e){ sx = e.clientX; });
-    el.addEventListener("pointerup", function(e){ if (sx === null) return; var dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) next(dx < 0 ? 1 : -1); else next(1); });
-    el.addEventListener("pointercancel", function(){ sx = null; });
-    prevB.addEventListener("click", function(){ next(-1); }); nextB.addEventListener("click", function(){ next(1); });
-    layout();
+    var bs = ctl.querySelectorAll("button"), cnt = ctl.querySelector(":scope > div > span"), bar = ctl.querySelector(".bar i");
+    function idx(){ var w = el.children[0].getBoundingClientRect().width + 12; return Math.round(el.scrollLeft / (w || 1)); }
+    function up(){ if (!el.clientWidth) return; var i = Math.max(0, Math.min(n - 1, idx())); cnt.textContent = (i + 1) + " / " + n; bs[0].disabled = i === 0; bs[1].disabled = i === n - 1; bar.style.width = ((i + 1) / n * 100) + "%"; }
+    function go(d){ var i = Math.max(0, Math.min(n - 1, idx() + d)); el.scrollTo({left: el.children[i].offsetLeft - el.children[0].offsetLeft, behavior: "smooth"}); }
+    bs[0].addEventListener("click", function(){ go(-1); }); bs[1].addEventListener("click", function(){ go(1); });
+    var raf = 0; el.addEventListener("scroll", function(){ if (!raf) raf = requestAnimationFrame(function(){ raf = 0; up(); }); }, {passive:true});
+    el._up = up; up();
   }
   /* 3. auto-playing feature tabs */
   function feat(el, labelOf, inside){
