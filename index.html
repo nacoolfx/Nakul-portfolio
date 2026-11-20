@@ -1293,6 +1293,12 @@ html.lenis{scroll-behavior:auto!important}
 html.rv .rv-item{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1) var(--rv-d,0ms),transform .9s cubic-bezier(.2,.7,.2,1) var(--rv-d,0ms)}
 html.rv .rv-item.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){html.rv .rv-item{opacity:1;transform:none;transition:none}}
+
+/* bottom bars slide away while scrolling down, and come back on scroll up */
+.dock{transition:transform .45s cubic-bezier(.3,.8,.3,1),opacity .35s}
+.dock.hide{transform:translate(-50%,calc(100% + 28px));opacity:0;pointer-events:none}
+@media (max-width:640px){.mtab{transition:transform .35s cubic-bezier(.3,.8,.3,1)}.mtab.hide{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){.dock,.mtab,.mtop{transition:opacity .2s!important}}
 </style>
 </head>
 <body>
@@ -2617,13 +2623,18 @@ html.rv .rv-item.in{opacity:1;transform:none}
   function state(){
     var y = scrollY, d = y - lastY;
     top.classList.toggle("on-hero", window.__route === "home" && y < 40);
-    if (y < 80 || d < -6) top.classList.remove("hide");
-    else if (d > 6) top.classList.add("hide");
+    var atEnd = y + innerHeight > document.documentElement.scrollHeight - 48;
+    var bars = [top, document.querySelector(".dock"), document.querySelector(".mtab")];
+    var hasFocus = bars.some(function(b){ return b && b !== top && b.contains(document.activeElement); });
+    /* scroll down: tuck the bars away; scroll up (or reach the end): bring them back */
+    if (y < 80 || d < -6 || atEnd || hasFocus) bars.forEach(function(b){ if (b) b.classList.remove("hide"); });
+    else if (d > 6) bars.forEach(function(b){ if (b) b.classList.add("hide"); });
     if (Math.abs(d) > 6 || y < 80) lastY = y;
     ticking = false;
   }
   addEventListener("scroll", function(){ if (!ticking){ ticking = true; requestAnimationFrame(state); } }, {passive:true});
-  addEventListener("hashchange", function(){ top.classList.remove("hide"); lastY = 0; setTimeout(state, 60); });
+  addEventListener("hashchange", function(){ document.querySelectorAll(".mtop,.dock,.mtab").forEach(function(b){ b.classList.remove("hide"); }); lastY = 0; setTimeout(state, 60); });
+  document.addEventListener("focusin", function(e){ if (e.target.closest && e.target.closest(".dock,.mtab")) document.querySelectorAll(".dock,.mtab").forEach(function(b){ b.classList.remove("hide"); }); });
   state();
 })();</script>
 <script>(function(){
